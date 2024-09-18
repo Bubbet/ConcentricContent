@@ -156,17 +156,6 @@ namespace CodedAssets
 			object? returnedObject;
 			switch (targetTypeName)
 			{
-				case nameof(IUnlockable):
-					// ReSharper disable once IdentifierTypo
-					var unlockable = (asset as IUnlockable)?.BuildObject() ?? throw notOfType;
-					unlockable.cachedName = name + nameof(UnlockableDef);
-					returnedObject = unlockable;
-					break;
-				case nameof(IItem):
-					var item = (asset as IItem)?.BuildObject() ?? throw notOfType;
-					item.name = name + nameof(ItemDef);
-					returnedObject = item;
-					break;
 				case nameof(ISkill):
 					var skill = (asset as ISkill)?.BuildObject() ?? throw notOfType;
 					var entityStates = ((ISkill)asset).GetEntityStates();
@@ -175,12 +164,7 @@ namespace CodedAssets
 					skill.skillName = name + nameof(SkillDef);
 					skill.activationState = new SerializableEntityStateType(entityStates[0]);
 					returnedObject = skill;
-					break;
-				case nameof(ISurvivor):
-					var survivor = (asset as ISurvivor)?.BuildObject() ?? throw notOfType;
-					survivor.cachedName = name + nameof(SurvivorDef);
-					returnedObject = survivor;
-					break;
+					break; 
 				case nameof(IEffect):
 					var effect = (asset as IEffect)?.BuildObject() ?? throw notOfType;
 					if (!effect.GetComponent<VFXAttributes>())
