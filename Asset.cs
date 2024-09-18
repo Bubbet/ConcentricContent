@@ -117,9 +117,9 @@ namespace CodedAssets
 		public static bool TryGetGameObject<T, T2>(out GameObject asset) where T2 : IGameObject where T : Asset, T2
 		{
 			var foundAsset = GetObjectOrNull<T2>(GetAsset<T>());
-			if (foundAsset is T2)
+			if (foundAsset is GameObject gameObject)
 			{
-				asset = (GameObject)foundAsset;
+				asset = gameObject;
 				return true;
 			}
 			asset = default!;
