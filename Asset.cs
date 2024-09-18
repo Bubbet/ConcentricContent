@@ -9,7 +9,11 @@ using RoR2.ContentManagement;
 using RoR2.Skills;
 using RoR2.UI;
 using UnityEngine;
-
+// ReSharper disable UnusedMember.Global
+// ReSharper disable RedundantAbstractModifier
+// ReSharper disable RedundantVirtualModifier
+// ReSharper disable MemberCanBeProtected.Global
+// ReSharper disable MemberCanBePrivate.Global
 // ReSharper disable SuspiciousTypeConversion.Global
 
 namespace CodedAssets
@@ -17,11 +21,11 @@ namespace CodedAssets
 	[HarmonyPatch]
 	public abstract class Asset
 	{
-		public static Dictionary<string, object> Objects = new Dictionary<string, object>();
-		public static Dictionary<Type, Asset> Assets = new Dictionary<Type, Asset>();
-		public static Dictionary<object, Asset> ObjectToAssetMap = new Dictionary<object, Asset>();
-		public static List<IOverlay> Overlays = new List<IOverlay>();
-		public static List<IMaterialSwap> MaterialSwaps = new List<IMaterialSwap>();
+		public static readonly Dictionary<string, object> Objects = new Dictionary<string, object>();
+		public static readonly Dictionary<Type, Asset> Assets = new Dictionary<Type, Asset>();
+		public static readonly Dictionary<object, Asset> ObjectToAssetMap = new Dictionary<object, Asset>();
+		public static readonly List<IOverlay> Overlays = new List<IOverlay>();
+		public static readonly List<IMaterialSwap> MaterialSwaps = new List<IMaterialSwap>();
 
 		public static ContentPack BuildContentPack()
 		{
@@ -29,10 +33,10 @@ namespace CodedAssets
 
 			var assets = Assembly.GetCallingAssembly().GetTypes()
 				.Where(x => typeof(Asset).IsAssignableFrom(x) && !x.IsAbstract);
-			Assets = assets.ToDictionary(x => x, x => (Asset)Activator.CreateInstance(x));
-			foreach (var asset in Assets.Values) asset.Initialize();
-
+			foreach (var asset in assets) Assets[asset] = (Asset)Activator.CreateInstance(asset);
 			var instances = Assets.Values;
+			foreach (var asset in instances) asset.Initialize();
+			
 			Overlays.AddRange(instances.Where(x => x is IOverlay).Cast<IOverlay>());
 			MaterialSwaps.AddRange(instances.Where(x => x is IMaterialSwap).Cast<IMaterialSwap>());
 			var entityStates = instances.Where(x => x is IEntityStates).SelectMany(x =>
@@ -132,12 +136,12 @@ namespace CodedAssets
 		public static GameObject GetGameObject<T, T2>() where T2 : IGameObject where T : Asset, T2 =>
 			GetGameObject(typeof(T), typeof(T2));
 
-		internal static GameObject GetGameObject(Type callingType, Type targetType) =>
+		public static GameObject GetGameObject(Type callingType, Type targetType) =>
 			(GameObject)GetObjectOrThrow(Assets[callingType], targetType);
 
 		public static object GetObjectOrThrow<T>(Asset asset) => GetObjectOrThrow(asset, typeof(T));
 
-		private static object GetObjectOrThrow(Asset asset, Type targetType)
+		public static object GetObjectOrThrow(Asset asset, Type targetType)
 		{
 			var assetType = asset.GetType();
 			var name = assetType.FullName;
@@ -149,10 +153,11 @@ namespace CodedAssets
 				return result!;
 			}
 
-			object? returnedObject = null;
+			object? returnedObject;
 			switch (targetTypeName)
 			{
 				case nameof(IUnlockable):
+					// ReSharper disable once IdentifierTypo
 					var unlockable = (asset as IUnlockable)?.BuildObject() ?? throw notOfType;
 					unlockable.cachedName = name + nameof(UnlockableDef);
 					returnedObject = unlockable;
@@ -305,6 +310,7 @@ namespace CodedAssets
 		}
 
 		[HarmonyPostfix, HarmonyPatch(typeof(CharacterModel), nameof(CharacterModel.UpdateOverlays))]
+		// ReSharper disable once InconsistentNaming
 		private static void CharacterModelUpdateOverlays(CharacterModel __instance)
 		{
 			foreach (var overlay in Overlays.Where(overlay =>
@@ -323,7 +329,7 @@ namespace CodedAssets
 			if (!c.TryGotoNext(MoveType.After,
 				    x => x.MatchCallOrCallvirt<CharacterModel>(nameof(CharacterModel.UpdateRendererMaterials))))
 			{
-				log.LogError("Failed to match il in charactermodel inject material.");
+				log.LogError("Failed to match il in character model inject material.");
 				return;
 			}
 			var injectionIndex = c.Index;
@@ -332,13 +338,13 @@ namespace CodedAssets
 			c.Index = injectionIndex;
 			c.Emit(OpCodes.Ldarg_0);
 			c.Emit(OpCodes.Ldloc, iIndex);
-			c.EmitDelegate<Action<CharacterModel, int>>((__instance, i) =>
+			c.EmitDelegate<Action<CharacterModel, int>>((characterModel, i) =>
 			{
-				var baseRenderer = __instance.baseRendererInfos[i];
-				var swappedMaterial = MaterialSwaps.Where(overlay => overlay.CheckEnabled(__instance, baseRenderer))
+				var baseRenderer = characterModel.baseRendererInfos[i];
+				var swappedMaterial = MaterialSwaps.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
 					.OrderBy(x => x.Priority).FirstOrDefault();
 				if (swappedMaterial != null)
-					__instance.baseRendererInfos[i].renderer.material =
+					characterModel.baseRendererInfos[i].renderer.material =
 						(Material)GetObjectOrThrow<IMaterialSwap>((Asset)swappedMaterial);
 			});
 		}
@@ -351,7 +357,7 @@ namespace CodedAssets
 			if (!c.TryGotoNext(MoveType.After, x => x.MatchBr(out jumpTarget), x => x.MatchLdloc(out _),
 				    x => x.MatchLdloc(out _), x => x.MatchCallOrCallvirt(out _), x => x.MatchStloc(out _)))
 			{
-				log.LogError("Failed to match il in loadout panel hidden skills fix.");
+				log.LogError("Failed to match il in load out panel hidden skills fix.");
 				return;
 			}
 
@@ -517,6 +523,7 @@ namespace CodedAssets
 		public abstract int Priority { get; }
 	}
 
+	// ReSharper disable once IdentifierTypo
 	public interface IUnlockable
 	{
 		public abstract UnlockableDef BuildObject();
@@ -536,7 +543,7 @@ namespace CodedAssets
 	{
 		public virtual SkillFamily BuildObject() => null!;
 
-		public abstract Type[] GetSkillAssets();
+		public abstract IEnumerable<Type> GetSkillAssets();
 
 		public virtual string GetNameToken(GenericSkill skill) => "";
 	}
