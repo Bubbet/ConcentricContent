@@ -3,22 +3,24 @@ using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 
+// ReSharper disable MemberCanBePrivate.Global
+
 namespace CodedAssets
 {
-	[BepInPlugin(GUID, "CodedAssets", "1.0.0")]
+	[BepInPlugin(Guid, "CodedAssets", "1.0.0")]
 	public class CodedAssetsPlugin : BaseUnityPlugin
 	{
-		public static Harmony harm;
-		public static CodedAssetsPlugin instance;
-		public static ManualLogSource log;
-		public const string GUID = "bubbet.codedassets";
+		public static Harmony Harm = null!;
+		public static CodedAssetsPlugin Instance = null!;
+		public static ManualLogSource LOG = null!;
+		public const string Guid = "bubbet.codedassets";
 
 		public void Awake()
 		{
-			instance = this;
-			log = Logger;
-			harm = new Harmony(Info.Metadata.GUID);
-			harm.PatchAll();
+			Instance = this;
+			LOG = Logger;
+			Harm = new Harmony(Info.Metadata.GUID);
+			Harm.PatchAll();
 		}
 	}
 }
