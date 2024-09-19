@@ -155,7 +155,7 @@ namespace CodedAssets
 					Objects[key + "_EntityStates"] = entityStates;
 					// ObjectToAssetMap ??
 					skill.skillName = name + nameof(SkillDef);
-					skill.activationState = new SerializableEntityStateType(entityStates[0]);
+					skill.activationState = new SerializableEntityStateType(entityStates.FirstOrDefault());
 					returnedObject = skill;
 					break;
 				case nameof(IEffect):
@@ -200,7 +200,7 @@ namespace CodedAssets
 					{
 						family = ScriptableObject.CreateInstance<SkillFamily>();
 						family.variants = familyAsset.GetSkillAssets()
-							.Select(x => (SkillFamily.Variant)GetAsset(x)!).ToArray();
+							.Select(x => (SkillFamily.Variant)x!).ToArray();
 					}
 
 					returnedObject = family;

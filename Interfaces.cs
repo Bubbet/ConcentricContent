@@ -115,7 +115,7 @@ namespace CodedAssets
 	{
 		public virtual SkillFamily BuildObject() => null!;
 
-		public abstract IEnumerable<Type> GetSkillAssets();
+		public abstract IEnumerable<Asset> GetSkillAssets();
 
 		public virtual string GetNameToken(GenericSkill skill) => "";
 	}
@@ -124,12 +124,12 @@ namespace CodedAssets
 	{
 		public abstract SkillDef BuildObject();
 
-		public abstract Type[] GetEntityStates();
+		public abstract IEnumerable<Type> GetEntityStates();
 	}
 
 	public interface IEntityStates
 	{
-		public abstract Type[] GetEntityStates();
+		public abstract IEnumerable<Type> GetEntityStates();
 	}
 
 	public interface IVariant
