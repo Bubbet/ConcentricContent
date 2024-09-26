@@ -7,9 +7,11 @@ using UnityEngine;
 
 namespace CodedAssets
 {
-	public interface IGameObject
+	public interface IGameObject {}
+
+	public interface IGenericObject : IGameObject
 	{
-		public virtual GameObject BuildObject() => null!;
+		public new abstract GameObject BuildObject();
 	}
 
 	public interface INetworkedObject : IGameObject
