@@ -30,6 +30,14 @@ namespace ConcentricContent
 			});
 		}
 
+		[HarmonyPostfix, HarmonyPatch(typeof(CharacterModel), nameof(CharacterModel.UpdateOverlayStates))]
+		// ReSharper disable twice InconsistentNaming
+		private static void CharacterModelUpdateOverlayStates(CharacterModel __instance, ref bool __result)
+		{
+			__result |= __instance.gameObject.GetOrAddComponent<ExtraOverlayTracker>().UpdateRequired(__instance);
+		}
+		
+		
 		[HarmonyPostfix, HarmonyPatch(typeof(CharacterModel), nameof(CharacterModel.UpdateOverlays))]
 		// ReSharper disable once InconsistentNaming
 		private static void CharacterModelUpdateOverlays(CharacterModel __instance)
@@ -92,6 +100,24 @@ namespace ConcentricContent
 			c.Goto(brTarget!.Target); // goto end of loop
 			c.GotoPrev(x => x.MatchLdloc(out _), x => x.MatchLdcI4(1), x => x.MatchAdd(), x => x.MatchStloc(out _));
 			c.MarkLabel(jumpTarget);
+		}
+	}
+
+	public class ExtraOverlayTracker : MonoBehaviour
+	{
+		private readonly Dictionary<IOverlay, bool> wasEnabled = new Dictionary<IOverlay, bool>();
+
+		public bool UpdateRequired(CharacterModel model)
+		{
+			var shouldUpdate = false;
+			foreach (var overlay in Asset.Overlays)
+			{
+				var overlayEnabled = overlay.CheckEnabled(model);
+				if (wasEnabled.TryGetValue(overlay, out var value) && overlayEnabled == value) continue;
+				wasEnabled[overlay] = overlayEnabled;
+				shouldUpdate = true;
+			}
+			return shouldUpdate;
 		}
 	}
 }

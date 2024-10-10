@@ -24,7 +24,12 @@ namespace ConcentricContent
 		{
 			var result = new ContentPack();
 
-			var assets = Assembly.GetCallingAssembly().GetTypes()
+			var types = Assembly.GetCallingAssembly().GetTypes();
+			foreach (var barData in types.Where(x => typeof(BarData).IsAssignableFrom(x) && !x.IsAbstract))
+			{
+				ExtraHealthBarSegments._barDataTypes.Add(barData);
+			}
+			var assets = types
 				.Where(x => typeof(Asset).IsAssignableFrom(x) && !x.IsAbstract);
 
 			var localAssets = assets.ToDictionary(x => x, x => (Asset)Activator.CreateInstance(x));
