@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace CodedAssets
+namespace ConcentricContent
 {
 	public static class ExtensionMethods
 	{

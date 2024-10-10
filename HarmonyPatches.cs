@@ -7,7 +7,7 @@ using RoR2.UI;
 using UnityEngine;
 // ReSharper disable SuspiciousTypeConversion.Global
 
-namespace CodedAssets
+namespace ConcentricContent
 {
 	[HarmonyPatch]
 	public class HarmonyPatches

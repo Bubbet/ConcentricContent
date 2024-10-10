@@ -2,7 +2,7 @@
 // ReSharper disable UnusedType.Global
 // ReSharper disable UnusedMember.Global
 
-namespace CodedAssets
+namespace ConcentricContent
 {
 	public static class AssetExtensionMethods
 	{

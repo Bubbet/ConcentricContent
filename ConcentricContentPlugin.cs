@@ -1,4 +1,4 @@
-﻿global using static CodedAssets.CodedAssetsPlugin;
+﻿global using static ConcentricContent.ConcentricContentPlugin;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -12,15 +12,15 @@ using System.Security.Permissions;
 #pragma warning restore CS0618 // Type or member is obsolete
 [module: UnverifiableCode]
 
-namespace CodedAssets
+namespace ConcentricContent
 {
-	[BepInPlugin(Guid, "CodedAssets", "1.0.0")]
-	public class CodedAssetsPlugin : BaseUnityPlugin
+	[BepInPlugin(Guid, "ConcentricContent", "1.0.0")]
+	public class ConcentricContentPlugin : BaseUnityPlugin
 	{
 		public static Harmony Harm = null!;
-		public static CodedAssetsPlugin Instance = null!;
+		public static ConcentricContentPlugin Instance = null!;
 		public static ManualLogSource LOG = null!;
-		public const string Guid = "bubbet.codedassets";
+		public const string Guid = "bubbet.concentriccontent";
 
 		public void Awake()
 		{

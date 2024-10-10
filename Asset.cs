@@ -10,7 +10,7 @@ using UnityEngine;
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable MemberCanBePrivate.Global
 
-namespace CodedAssets
+namespace ConcentricContent
 {
 	public abstract class Asset
 	{
@@ -80,6 +80,7 @@ namespace CodedAssets
 			 * expansionDefs
 			 * entitlementDefs // also kinda pointless?
 			 * miscPickupDefs
+			 * ItemDisplayRuleSet
 			 */
 
 			return result;

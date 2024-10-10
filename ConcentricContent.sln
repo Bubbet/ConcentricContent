@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodedAssets", "CodedAssets.csproj", "{FDADC516-54A0-453D-BB3B-BA59B56BE443}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConcentricContent", "ConcentricContent.csproj", "{FDADC516-54A0-453D-BB3B-BA59B56BE443}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

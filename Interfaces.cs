@@ -5,7 +5,7 @@ using UnityEngine;
 // ReSharper disable RedundantAbstractModifier
 // ReSharper disable UnusedMember.Global
 
-namespace CodedAssets
+namespace ConcentricContent
 {
 	public interface IGameObject {}
 
