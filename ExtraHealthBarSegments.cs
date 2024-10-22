@@ -139,7 +139,7 @@ namespace ConcentricContent
 			public void Init(HealthBar? hBar)
 			{
 				healthBar = hBar;
-				BarInfos = _barDataTypes.Select(dataType => (BarData) Activator.CreateInstance(dataType)).ToList();
+				BarInfos = _barDataTypes.Select(dataType => ((BarData) Activator.CreateInstance(dataType)).Init(this, hBar!)).ToList();
 			}
 		}
 	}
@@ -180,6 +180,13 @@ namespace ConcentricContent
 			rectTransform.sizeDelta = new Vector2(inf.sizeDelta * 0.5f + 1f, inf.sizeDelta + 1f);
 
 			i++;
+		}
+
+		public virtual BarData Init(ExtraHealthBarSegments.ExtraHealthBarInfoTracker extraHealthBarInfoTracker, HealthBar hBar)
+		{
+			Tracker = extraHealthBarInfoTracker;
+			Bar = hBar;
+			return this;
 		}
 	}
 }
