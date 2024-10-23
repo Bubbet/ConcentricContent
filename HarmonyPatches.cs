@@ -46,8 +46,7 @@ namespace ConcentricContent
 				         overlay.CheckEnabled(__instance) &&
 				         __instance.activeOverlayCount < CharacterModel.maxOverlays))
 			{
-				__instance.currentOverlays[__instance.activeOverlayCount++] =
-					(Material)Asset.GetObjectOrThrow<IOverlay>((Asset)overlay);
+				__instance.currentOverlays[__instance.activeOverlayCount++] = Asset.OverlayMaterials[overlay];
 			}
 		}
 
@@ -72,9 +71,8 @@ namespace ConcentricContent
 				var baseRenderer = characterModel.baseRendererInfos[i];
 				var swappedMaterial = Asset.MaterialSwaps.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
 					.OrderBy(x => x.Priority).FirstOrDefault();
-				if (swappedMaterial != null)
-					characterModel.baseRendererInfos[i].renderer.material =
-						(Material)Asset.GetObjectOrThrow<IMaterialSwap>((Asset)swappedMaterial);
+				if (swappedMaterial == null) return;
+				characterModel.baseRendererInfos[i].renderer.material = Asset.MaterialSwapMaterials[swappedMaterial];
 			});
 		}
 

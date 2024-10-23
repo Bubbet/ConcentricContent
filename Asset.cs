@@ -12,62 +12,87 @@ using UnityEngine;
 
 namespace ConcentricContent
 {
-	public abstract class Asset
+	public abstract partial class Asset
 	{
 		public static readonly Dictionary<string, object> Objects = new Dictionary<string, object>();
 		public static readonly Dictionary<Type, Asset> Assets = new Dictionary<Type, Asset>();
 		public static readonly Dictionary<object, Asset> ObjectToAssetMap = new Dictionary<object, Asset>();
 		public static readonly List<IOverlay> Overlays = new List<IOverlay>();
 		public static readonly List<IMaterialSwap> MaterialSwaps = new List<IMaterialSwap>();
+		
+		public static readonly Dictionary<IMaterialSwap, Material> MaterialSwapMaterials = new Dictionary<IMaterialSwap, Material>();
+		public static readonly Dictionary<IOverlay, Material> OverlayMaterials = new Dictionary<IOverlay, Material>();
 
-		public static ContentPack BuildContentPack()
+		public static async Task<ContentPack> BuildContentPack(Assembly assembly)
 		{
 			var result = new ContentPack();
 
-			var types = Assembly.GetCallingAssembly().GetTypes();
+			var types = assembly.GetTypes();
 			foreach (var barData in types.Where(x => typeof(BarData).IsAssignableFrom(x) && !x.IsAbstract))
 			{
 				ExtraHealthBarSegments._barDataTypes.Add(barData);
 			}
+
 			var assets = types
 				.Where(x => typeof(Asset).IsAssignableFrom(x) && !x.IsAbstract);
 
 			var localAssets = assets.ToDictionary(x => x, x => (Asset)Activator.CreateInstance(x));
 			foreach (var (key, value) in localAssets) Assets[key] = value;
 			var instances = localAssets.Values;
-			foreach (var asset in instances) asset.Initialize();
+			await Task.WhenAll(instances.Select(asset => asset.Initialize()));
 
-			Overlays.AddRange(instances.Where(x => x is IOverlay).Cast<IOverlay>());
+			var overlays = instances.Where(x => x is IOverlay).Cast<IOverlay>().ToArray();
+			Overlays.AddRange(overlays);
+			var materialsOL = await Task.WhenAll(overlays.Select(x => GetObjectOrThrow<IOverlay, Material>((Asset) x)));
+			for (var i = 0; i < overlays.Length; i++)
+			{
+				OverlayMaterials[overlays[i]] = materialsOL[i];
+			}
+			
 			MaterialSwaps.AddRange(instances.Where(x => x is IMaterialSwap).Cast<IMaterialSwap>());
+			var swaps = instances.Where(x => x is IMaterialSwap).Cast<IMaterialSwap>().ToArray();
+			MaterialSwaps.AddRange(swaps);
+			var materialsSW = await Task.WhenAll(swaps.Select(x => GetObjectOrThrow<IMaterialSwap, Material>((Asset) x)));
+			for (var i = 0; i < overlays.Length; i++)
+			{
+				MaterialSwapMaterials[swaps[i]] = materialsSW[i];
+			}
+			
 			var entityStates = instances.Where(x => x is IEntityStates).SelectMany(x =>
 				(Type[])Objects.GetOrSet(x.GetType().Assembly.FullName + "_" + x.GetType().FullName + "_EntityStates",
 					() => ((IEntityStates)x).GetEntityStates()));
 
-			result.unlockableDefs.Add(instances.Where(x => x is IUnlockable).Select(x => (UnlockableDef)x!).ToArray());
-			result.itemDefs.Add(instances.Where(x => x is IItem).Select(x => (ItemDef)x).ToArray());
-			result.buffDefs.Add(instances.Where(x => x is IBuff).Select(x => (BuffDef)x).ToArray());
-			result.skillDefs.Add(instances.Where(x => x is ISkill).Select(x => (SkillDef)x!).ToArray());
+			result.unlockableDefs.Add((await Task.WhenAll(instances.Where(x => x is IUnlockable)
+				.Select(GetObjectOrThrow<IUnlockable, UnlockableDef>)))!);
+			result.itemDefs.Add(
+				(await Task.WhenAll(instances.Where(x => x is IItem).Select(GetObjectOrThrow<IItem, ItemDef>)))!);
+			result.buffDefs.Add(
+				(await Task.WhenAll(instances.Where(x => x is IBuff).Select(GetObjectOrThrow<IBuff, BuffDef>)))!);
+			result.skillDefs.Add((await Task.WhenAll(instances.Where(x => x is ISkill)
+				.Select(GetObjectOrThrow<ISkill, SkillDef>)))!);
 			result.entityStateTypes.Add(instances.Where(x => x is ISkill)
 				.SelectMany(x =>
 					(Type[])Objects[
 						x.GetType().Assembly.FullName + "_" + x.GetType().FullName + "_" + nameof(ISkill) +
 						"_EntityStates"])
 				.Concat(entityStates).Distinct().ToArray());
-			result.skillFamilies.Add(instances.Where(x => x is ISkillFamily).Select(x => (SkillFamily)x!).ToArray());
-			result.networkedObjectPrefabs.Add(instances.Where(x => x is INetworkedObject)
-				.Select(x => (GameObject)GetObjectOrThrow<INetworkedObject>(x))
-				.ToArray());
-			result.bodyPrefabs.Add(instances.Where(x => x is IBody).Select(x => (GameObject)GetObjectOrThrow<IBody>(x))
-				.ToArray());
-			result.survivorDefs.Add(instances.Where(x => x is ISurvivor).Select(x => (SurvivorDef)x!).ToArray());
-			result.projectilePrefabs.Add(instances.Where(x => x is IProjectile)
-				.Select(x => (GameObject)GetObjectOrThrow<IProjectile>(x)).ToArray());
-			result.effectDefs.Add(instances.Where(x => x is IEffect)
-				.Select(x => new EffectDef((GameObject)GetObjectOrThrow<IEffect>(x))).ToArray());
-			result.masterPrefabs.Add(instances.Where(x => x is IMaster)
-				.Select(x => (GameObject)GetObjectOrThrow<IMaster>(x))
-				.ToArray());
-			result.musicTrackDefs.Add(instances.Where(x => x is IMusicTrack).Select(x => (MusicTrackDef)x!).ToArray());
+			result.skillFamilies.Add((await Task.WhenAll(instances.Where(x => x is ISkillFamily)
+				.Select(GetObjectOrThrow<ISkillFamily, SkillFamily>)))!);
+			result.networkedObjectPrefabs.Add((await Task.WhenAll(instances.Where(x => x is INetworkedObject)
+				.Select(GetObjectOrThrow<INetworkedObject, GameObject>)))!);
+			result.bodyPrefabs.Add(
+				(await Task.WhenAll(instances.Where(x => x is IBody).Select(GetObjectOrThrow<IBody, GameObject>)))!);
+			result.survivorDefs.Add((await Task.WhenAll(instances.Where(x => x is ISurvivor)
+				.Select(GetObjectOrThrow<ISurvivor, SurvivorDef>)))!);
+			result.projectilePrefabs.Add((await Task.WhenAll(instances.Where(x => x is IProjectile)
+				.Select(GetObjectOrThrow<IProjectile, GameObject>)))!);
+			result.effectDefs.Add(
+				(await Task.WhenAll(instances.Where(x => x is IEffect).Select(GetObjectOrThrow<IEffect, GameObject>)))!
+				.Select(x => new EffectDef(x)).ToArray());
+			result.masterPrefabs.Add((await Task.WhenAll(instances.Where(x => x is IMaster)
+				.Select(GetObjectOrThrow<IMaster, GameObject>)))!);
+			result.musicTrackDefs.Add((await Task.WhenAll(instances.Where(x => x is IMusicTrack)
+				.Select(GetObjectOrThrow<IMusicTrack, MusicTrackDef>)))!);
 
 			/* TODO
 			 * gameModePrefabs
@@ -91,26 +116,12 @@ namespace ConcentricContent
 			return result;
 		}
 
-		public static bool TryGetAsset<T>(out T asset) where T : Asset
-		{
-			if (Assets.TryGetValue(typeof(T), out var foundAsset))
-			{
-				asset = (T)foundAsset;
-				return true;
-			}
-
-			asset = default!;
-			return false;
-		}
-
 		public static bool TryGetAssetFromObject<T>(object obj, out T asset)
 		{
 			var found = ObjectToAssetMap.TryGetValue(obj, out var assetObj);
 			asset = assetObj is T ? (T)(object)assetObj : default!;
 			return found;
 		}
-
-		public static bool TryGetAsset<T, T2>(out T asset) where T : Asset, T2 => TryGetAsset(out asset);
 
 		public static T GetAsset<T>() where T : Asset => (T)GetAsset(typeof(T));
 
@@ -120,27 +131,31 @@ namespace ConcentricContent
 			? Assets[assetType]
 			: throw new AssetTypeInvalidException($"{assetType.FullName} is not an Asset");
 
-		public static bool TryGetGameObject<T, T2>(out GameObject asset) where T2 : IGameObject where T : Asset, T2
+
+
+		public static Task<T2> GetObjectOrThrow<T, T1, T2>() where T : Asset, T1 => GetObjectOrThrow<T1, T2>(GetAsset<T>());
+
+		public static async Task<T2> GetObjectOrThrow<T, T2>(Asset asset) => (T2) await GetObjectOrThrow(asset, typeof(T));
+		public static Task<object> GetObjectOrThrow<T>(Asset asset) => GetObjectOrThrow(asset, typeof(T));
+
+		public static async Task<object> GetObjectOrThrow(Asset asset, Type targetType)
 		{
-			var foundAsset = GetObjectOrNull<T2>(GetAsset<T>());
-			if (foundAsset is GameObject gameObject)
-			{
-				asset = gameObject;
-				return true;
-			}
-			asset = default!;
-			return false;
+			return await GetObjectOrNull(asset, targetType) ??
+			       throw new AssetTypeInvalidException($"{asset.GetType().FullName} is not of type {targetType.Name}");
+		}
+		
+		public static async Task<T2?> GetObjectOrNull<T, T1, T2>() where T : Asset, T1
+		{
+			var assetType = typeof(T);
+			return Assets.TryGetValue(assetType, out var asset)
+				? await GetObjectOrNull(asset, assetType) is T2 result ? result : default
+				: default;
 		}
 
-		public static GameObject GetGameObject<T, T2>() where T2 : IGameObject where T : Asset, T2 =>
-			GetGameObject(typeof(T), typeof(T2));
+		public static async Task<T2?> GetObjectOrNull<T, T2>(Asset asset) => await GetObjectOrNull<T>(asset) is T2 result ? result : default;
+		public static Task<object?> GetObjectOrNull<T>(Asset asset) => GetObjectOrNull(asset, typeof(T));
 
-		public static GameObject GetGameObject(Type callingType, Type targetType) =>
-			(GameObject)GetObjectOrThrow(GetAsset(callingType), targetType);
-
-		public static object? GetObjectOrNull<T>(Asset asset) => GetObjectOrNull(asset, typeof(T));
-
-		public static object? GetObjectOrNull(Asset asset, Type targetType)
+		public static async Task<object?> GetObjectOrNull(Asset asset, Type targetType)
 		{
 			var assetType = asset.GetType();
 			var name = assetType.FullName;
@@ -155,8 +170,10 @@ namespace ConcentricContent
 			switch (targetTypeName)
 			{
 				case nameof(ISkill):
-					var skill = (asset as ISkill)?.BuildObject();
-					if (skill is null) return null;
+					var skillTask = (asset as ISkill)?.BuildObject();
+					if (skillTask is null) return null;
+					var skill = await skillTask;
+
 					var entityStates = ((ISkill)asset).GetEntityStates();
 					Objects[key + "_EntityStates"] = entityStates;
 					// ObjectToAssetMap ??
@@ -165,8 +182,10 @@ namespace ConcentricContent
 					returnedObject = skill;
 					break;
 				case nameof(IEffect):
-					var effect = (asset as IEffect)?.BuildObject();
-					if (effect is null) return null;
+					var effectTask = (asset as IEffect)?.BuildObject();
+					if (effectTask is null) return null;
+					var effect = await effectTask;
+
 					if (!effect.GetComponent<VFXAttributes>())
 					{
 						var attributes = effect.AddComponent<VFXAttributes>();
@@ -185,43 +204,50 @@ namespace ConcentricContent
 					returnedObject = effect;
 					break;
 				case nameof(IVariant):
-					var variant = (asset as IVariant)?.BuildObject();
-					if (variant is null)
+					var variantTask = (asset as IVariant)?.BuildObject();
+					SkillFamily.Variant variant;
+					if (variantTask is null)
 					{
-						SkillDef? skillDef = asset;
+						var skillDef = await GetObjectOrNull<ISkill, SkillDef>(asset);
 						if (skillDef is null) return null;
 						variant = new SkillFamily.Variant
 						{
 							skillDef = skillDef, viewableNode = new ViewablesCatalog.Node(skillDef.skillName, false)
 						};
 					}
+					else
+						variant = await variantTask;
 
 					returnedObject = variant;
 					break;
 				case nameof(ISkillFamily):
 					if (asset is not ISkillFamily familyAsset) return null;
-					var family = familyAsset.BuildObject();
+					var family = await familyAsset.BuildObject();
 					// ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
 					if (family is null)
 					{
 						family = ScriptableObject.CreateInstance<SkillFamily>();
-						family.variants = familyAsset.GetSkillAssets()
-							.Select(x => (SkillFamily.Variant)x!).ToArray();
+						family.variants = await Task.WhenAll(familyAsset.GetSkillAssets()
+							.Select(GetObjectOrThrow<IVariant, SkillFamily.Variant>))!;
 					}
 
 					returnedObject = family;
 					break;
 				case nameof(IModel):
 					if (asset is not IModel modelAsset) return null;
-					returnedObject = modelAsset.BuildObject();
+					returnedObject = await modelAsset.BuildObject();
 					Objects[key] = returnedObject;
 					ObjectToAssetMap[returnedObject] = asset;
 					var skinController = ((GameObject)returnedObject).GetOrAddComponent<ModelSkinController>();
-					skinController.skins = modelAsset.GetSkins().Select(x => (SkinDef)x!).ToArray();
+					skinController.skins =
+						await Task.WhenAll(modelAsset.GetSkins().Select(GetObjectOrThrow<ISkin, SkinDef>))!;
 					break;
 				default:
-					returnedObject = targetType.GetMethod("BuildObject")?.Invoke(asset, null);
-					if (returnedObject is null) return null;
+					if (targetType.GetMethod("BuildObject")?.Invoke(asset, null) is not Task task) return null;
+					await task;
+					var taskType = task.GetType().GetProperty("Result");
+					if (taskType == null) return null;
+					returnedObject = taskType.GetValue(task);
 					break;
 			}
 
@@ -241,49 +267,7 @@ namespace ConcentricContent
 			return returnedObject;
 		}
 
-		public static object GetObjectOrThrow<T>(Asset asset) => GetObjectOrThrow(asset, typeof(T));
-
-		public static object GetObjectOrThrow(Asset asset, Type targetType)
-		{
-			return GetObjectOrNull(asset, targetType) ??
-			       throw new AssetTypeInvalidException($"{asset.GetType().FullName} is not of type {targetType.Name}");
-		}
-
-		public static explicit operator ItemDef(Asset asset) => (ItemDef)GetObjectOrThrow<IItem>(asset);
-
-		public static implicit operator ItemIndex(Asset asset) =>
-			(GetObjectOrNull<IItem>(asset) as ItemDef)?.itemIndex ?? ItemIndex.None;
-
-		public static implicit operator UnlockableDef?(Asset asset) =>
-			GetObjectOrNull<IUnlockable>(asset) as UnlockableDef;
-
-		public static explicit operator BuffDef(Asset asset) => (BuffDef)GetObjectOrThrow<IBuff>(asset);
-
-		public static implicit operator BuffIndex(Asset asset) =>
-			(GetObjectOrNull<IBuff>(asset) as BuffDef)?.buffIndex ?? BuffIndex.None;
-
-		public static implicit operator BodyIndex(Asset asset) =>
-			(GetObjectOrNull<IBody>(asset) as GameObject)?.GetComponent<CharacterBody>().bodyIndex ?? BodyIndex.None;
-
-		public static implicit operator Material?(Asset asset) => GetObjectOrNull<IMaterial>(asset) as Material;
-
-		public static implicit operator SurvivorDef?(Asset asset) => GetObjectOrNull<ISurvivor>(asset) as SurvivorDef;
-
-		public static implicit operator SkinDef?(Asset asset) => GetObjectOrNull<ISkin>(asset) as SkinDef;
-
-		public static implicit operator SkillDef?(Asset asset) => GetObjectOrNull<ISkill>(asset) as SkillDef;
-
-		public static implicit operator MusicTrackDef?(Asset asset) =>
-			GetObjectOrNull<IMusicTrack>(asset) as MusicTrackDef;
-
-
-		public static implicit operator SkillFamily?(Asset asset) =>
-			GetObjectOrNull<ISkillFamily>(asset) as SkillFamily;
-
-		public static implicit operator SkillFamily.Variant?(Asset asset) =>
-			(SkillFamily.Variant?)GetObjectOrNull<IVariant>(asset);
-
-		public virtual void Initialize() { }
+		public virtual Task Initialize() => Task.CompletedTask;
 	}
 
 	public class AssetTypeInvalidException : Exception
