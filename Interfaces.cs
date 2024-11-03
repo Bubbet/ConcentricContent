@@ -52,7 +52,7 @@ namespace ConcentricContent
 	public interface IModel : IGameObject
 	{
 		public new abstract Task<GameObject> BuildObject();
-		public abstract IEnumerable<Asset> GetSkins();
+		public abstract IEnumerable<Concentric> GetSkins();
 	}
 
 	public interface ISurvivor
@@ -117,7 +117,7 @@ namespace ConcentricContent
 	{
 		public virtual Task<SkillFamily> BuildObject() => Task.FromResult<SkillFamily>(null!);
 
-		public abstract IEnumerable<Asset> GetSkillAssets();
+		public abstract IEnumerable<Concentric> GetSkillAssets();
 
 		public virtual string GetNameToken(GenericSkill skill) => "";
 	}

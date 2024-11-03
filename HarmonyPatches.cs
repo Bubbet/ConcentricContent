@@ -23,7 +23,7 @@ namespace ConcentricContent
 			c.Emit(OpCodes.Ldarg_3);
 			c.EmitDelegate<Func<string, GenericSkill, string>>((s, skill) =>
 			{
-				if (!Asset.TryGetAssetFromObject(skill.skillFamily, out ISkillFamily asset))
+				if (!Concentric.TryGetAssetFromObject(skill.skillFamily, out ISkillFamily asset))
 					return s;
 				var nameToken = asset.GetNameToken(skill);
 				return nameToken.IsNullOrWhiteSpace() ? s : nameToken;
@@ -42,11 +42,11 @@ namespace ConcentricContent
 		// ReSharper disable once InconsistentNaming
 		private static void CharacterModelUpdateOverlays(CharacterModel __instance)
 		{
-			foreach (var overlay in Asset.Overlays.Where(overlay =>
+			foreach (var overlay in Concentric.Overlays.Where(overlay =>
 				         overlay.CheckEnabled(__instance) &&
 				         __instance.activeOverlayCount < CharacterModel.maxOverlays))
 			{
-				__instance.currentOverlays[__instance.activeOverlayCount++] = Asset.OverlayMaterials[overlay];
+				__instance.currentOverlays[__instance.activeOverlayCount++] = Concentric.OverlayMaterials[overlay];
 			}
 		}
 
@@ -69,10 +69,10 @@ namespace ConcentricContent
 			c.EmitDelegate<Action<CharacterModel, int>>((characterModel, i) =>
 			{
 				var baseRenderer = characterModel.baseRendererInfos[i];
-				var swappedMaterial = Asset.MaterialSwaps.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
+				var swappedMaterial = Concentric.MaterialSwaps.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
 					.OrderBy(x => x.Priority).FirstOrDefault();
 				if (swappedMaterial == null) return;
-				characterModel.baseRendererInfos[i].renderer.material = Asset.MaterialSwapMaterials[swappedMaterial];
+				characterModel.baseRendererInfos[i].renderer.material = Concentric.MaterialSwapMaterials[swappedMaterial];
 			});
 		}
 
@@ -108,7 +108,7 @@ namespace ConcentricContent
 		public bool UpdateRequired(CharacterModel model)
 		{
 			var shouldUpdate = false;
-			foreach (var overlay in Asset.Overlays)
+			foreach (var overlay in Concentric.Overlays)
 			{
 				var overlayEnabled = overlay.CheckEnabled(model);
 				if (wasEnabled.TryGetValue(overlay, out var value) && overlayEnabled == value) continue;
