@@ -44,7 +44,7 @@ namespace ConcentricContent
 
 			var localAssets = assets.ToDictionary(x => x, x => (Concentric)Activator.CreateInstance(x));
 			foreach (var (key, value) in localAssets) Assets[key] = value;
-			var instances = localAssets.Values;
+			var instances = localAssets.Values.Where(x => x.Enabled).ToArray();
 			await Task.WhenAll(instances.Select(asset => asset.Initialize()));
 
 			var overlays = instances.Where(x => x is IOverlay).Cast<IOverlay>().ToArray();
@@ -301,6 +301,7 @@ namespace ConcentricContent
 			return returnedObject;
 		}
 
+		public virtual bool Enabled => true;
 		public virtual Task Initialize() => Task.CompletedTask;
 	}
 
