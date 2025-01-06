@@ -92,7 +92,7 @@ namespace ConcentricContent
 			c.Index--;
 			c.Emit(OpCodes.Dup);
 			c.Index++;
-			c.Emit(OpCodes.Ldfld, typeof(GenericSkill).GetField(nameof(GenericSkill.hideInCharacterSelect)));
+			c.EmitDelegate<Func<GenericSkill, bool>>(skill => Concentric.TryGetAssetFromObject(skill.skillFamily, out ISkillFamily asset) && asset.HiddenFromCharacterSelect);
 			var jumpTarget = c.DefineLabel();
 			c.Emit(OpCodes.Brtrue, jumpTarget); // jump to where the index increases
 			c.Goto(brTarget!.Target); // goto end of loop

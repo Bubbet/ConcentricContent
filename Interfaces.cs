@@ -1,13 +1,16 @@
 ﻿using RoR2;
 using RoR2.Skills;
 using UnityEngine;
+
 // ReSharper disable RedundantVirtualModifier
 // ReSharper disable RedundantAbstractModifier
 // ReSharper disable UnusedMember.Global
 
 namespace ConcentricContent
 {
-	public interface IGameObject {}
+	public interface IGameObject
+	{
+	}
 
 	public interface IGenericObject : IGameObject
 	{
@@ -120,6 +123,7 @@ namespace ConcentricContent
 		public abstract IEnumerable<Concentric> GetSkillAssets();
 
 		public virtual string GetNameToken(GenericSkill skill) => "";
+		public virtual bool HiddenFromCharacterSelect => false;
 	}
 
 	public interface ISkill

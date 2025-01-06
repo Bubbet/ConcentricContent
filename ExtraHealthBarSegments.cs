@@ -21,10 +21,9 @@ namespace ConcentricContent
 
 		[HarmonyPostfix, HarmonyPatch(typeof(HealthBar), nameof(HealthBar.Awake))]
 		// ReSharper disable once InconsistentNaming
-		public static void AddTracker(HealthBar? __instance)
+		public static void AddTracker(HealthBar __instance)
 		{
-			if (__instance != null)
-				__instance.gameObject.AddComponent<ExtraHealthBarInfoTracker>().Init(__instance);
+			__instance.gameObject.AddComponent<ExtraHealthBarInfoTracker>();
 		}
 
 		[HarmonyPostfix, HarmonyPatch(typeof(HealthBar), nameof(HealthBar.CheckInventory))]
@@ -96,20 +95,28 @@ namespace ConcentricContent
 			c.Emit(OpCodes.Stfld, fld);
 		}
 
+		[RequireComponent(typeof(HealthBar))]
 		public class ExtraHealthBarInfoTracker : MonoBehaviour
 		{
 			public List<BarData> BarInfos = null!;
-			public HealthBar? healthBar;
-			private Material? _defaultMaterial;
 
+			private HealthBar? _healthBar;
+			public HealthBar HealthBar
+			{
+				get
+				{
+					if (_healthBar == null || !_healthBar) _healthBar = GetComponent<HealthBar>();
+					return _healthBar;
+				}
+			}
+
+			private Material? _defaultMaterial;
 			private Material DefaultMaterial
 			{
 				get
 				{
-					if (_defaultMaterial == null)
-					{
-						_defaultMaterial = healthBar!.barAllocator.elementPrefab.GetComponent<Image>().material;
-					} 
+					if (_defaultMaterial == null || !_defaultMaterial)
+						_defaultMaterial = HealthBar.barAllocator.elementPrefab.GetComponent<Image>().material;
 					return _defaultMaterial;
 				}
 			}
@@ -124,46 +131,33 @@ namespace ConcentricContent
 
 			public HealthComponent.HealthBarValues UpdateInfo(ref HealthComponent.HealthBarValues barValues)
 			{
-				if (healthBar == null || !healthBar || !healthBar.source) return barValues;
-				var healthBarValues = healthBar.source.GetHealthBarValues();
-				foreach (var barInfo in BarInfos)
-				{
-					barInfo.UpdateInfo(ref barInfo.Info, ref healthBarValues, this);
-				}
-
-				return healthBarValues;
+				if (!HealthBar.source) return barValues;
+				foreach (var barInfo in BarInfos) barInfo.UpdateInfo(ref barInfo.Info, ref barValues);
+				return barValues;
 			}
 
 			public void ApplyBar(ref int i)
 			{
-				if (healthBar != null)
+				foreach (var image in HealthBar.barAllocator.elements)
 				{
-					foreach (var image in healthBar.barAllocator.elements)
-					{
-						if (image.material != DefaultMaterial)
-							image.material = DefaultMaterial;
-					}
+					if (image.material != DefaultMaterial)
+						image.material = DefaultMaterial;
 				}
 
 				foreach (var barInfo in BarInfos)
 				{
 					ref var info = ref barInfo.Info;
-					if (!info.enabled)
-					{
-						continue;
-					}
+					if (!info.enabled) continue;
 
-					if (healthBar == null) continue;
-					var image = healthBar.barAllocator.elements[i];
+					var image = HealthBar.barAllocator.elements[i];
 					barInfo.ApplyBar(ref barInfo.Info, image, ref i);
 				}
 			}
 
-			public void Init(HealthBar? hBar)
+			public void Awake()
 			{
-				healthBar = hBar;
 				BarInfos = _barDataTypes
-					.Select(dataType => ((BarData)Activator.CreateInstance(dataType)).Init(this, hBar!)).ToList();
+					.Select(dataType => ((BarData)Activator.CreateInstance(dataType)).Init(this)).ToList();
 			}
 		}
 	}
@@ -171,16 +165,14 @@ namespace ConcentricContent
 	public abstract class BarData
 	{
 		public ExtraHealthBarSegments.ExtraHealthBarInfoTracker Tracker = null!;
-		public HealthBar? Bar;
 		public HealthBar.BarInfo Info;
 		public HealthBarStyle.BarStyle? CachedStyle;
 
 		public abstract HealthBarStyle.BarStyle GetStyle();
 
-		public virtual void UpdateInfo(ref HealthBar.BarInfo inf, ref HealthComponent.HealthBarValues healthBarValues,
-			ExtraHealthBarSegments.ExtraHealthBarInfoTracker extraHealthBarInfoTracker)
+		public virtual void UpdateInfo(ref HealthBar.BarInfo inf, ref HealthComponent.HealthBarValues healthBarValues)
 		{
-			if (CachedStyle == null) CachedStyle = GetStyle();
+			CachedStyle ??= GetStyle();
 			var style = CachedStyle.Value;
 
 			inf.enabled &= style.enabled;
@@ -210,11 +202,9 @@ namespace ConcentricContent
 			i++;
 		}
 
-		public virtual BarData Init(ExtraHealthBarSegments.ExtraHealthBarInfoTracker extraHealthBarInfoTracker,
-			HealthBar hBar)
+		public virtual BarData Init(ExtraHealthBarSegments.ExtraHealthBarInfoTracker extraHealthBarInfoTracker)
 		{
 			Tracker = extraHealthBarInfoTracker;
-			Bar = hBar;
 			return this;
 		}
 	}
