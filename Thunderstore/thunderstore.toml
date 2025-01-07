@@ -9,6 +9,9 @@ description = "Asynchronous content creation library"
 websiteUrl = "https://github.com/Bubbet/ConcentricContent"
 containsNsfwContent = false
 
+[package.dependencies]
+bbepis-BepInExPack = "5.4.19"
+
 [build]
 icon = "./icon.png"
 readme = "../README.md"
