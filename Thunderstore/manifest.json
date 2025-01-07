@@ -1,0 +1,8 @@
+{
+    "name": "ConcentricContent",
+    "version_number": "1.0.1",
+    "author": "NewlyHatchedDisciple",
+    "website_url": "https://github.com/Bubbet/ConcentricContent",
+    "description": "Asynchronous content creation library",
+    "dependencies": []
+}

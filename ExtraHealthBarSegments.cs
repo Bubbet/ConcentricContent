@@ -12,7 +12,7 @@ namespace ConcentricContent
 	[HarmonyPatch]
 	public static class ExtraHealthBarSegments
 	{
-		internal static List<Type> _barDataTypes = new();
+		internal static List<Type> _barDataTypes = new List<Type>();
 
 		public static void AddType<T>() where T : BarData, new()
 		{

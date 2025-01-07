@@ -1,0 +1,24 @@
+﻿[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "NewlyHatchedDisciple"
+name = "ConcentricContent"
+versionNumber = "1.0.2"
+description = "Asynchronous content creation library"
+websiteUrl = "https://github.com/Bubbet/ConcentricContent"
+containsNsfwContent = false
+
+[build]
+icon = "./icon.png"
+readme = "../README.md"
+outdir = "../zip"
+
+[[build.copy]]
+source = "../bin/Release/netstandard2.1/ConcentricContent.dll"
+target = "plugins/ConcentricContent/ConcentricContent.dll"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["riskofrain2"]
+categories = ["libraries"]

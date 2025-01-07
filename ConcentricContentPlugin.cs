@@ -14,14 +14,14 @@ using System.Security.Permissions;
 
 namespace ConcentricContent
 {
-	[BepInPlugin(Guid, "ConcentricContent", "1.0.0")]
+	[BepInPlugin(Guid, "ConcentricContent", Version)]
 	public class ConcentricContentPlugin : BaseUnityPlugin
 	{
 		public static Harmony Harm = null!;
 		public static ConcentricContentPlugin Instance = null!;
 		public static ManualLogSource LOG = null!;
 		public const string Guid = "bubbet.concentriccontent";
-
+		public const string Version = "1.0.2";
 		public void Awake()
 		{
 			Instance = this;

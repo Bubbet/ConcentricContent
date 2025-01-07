@@ -1,0 +1,39 @@
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '\d+\.\d+\.\d+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get previous tag
+        id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+      - name: Update Version
+        run: sed -i "s/public const string Version = \".*\"/public const string Version = \"${{ steps.previoustag.outputs.tag }}.${{ github.run_number }}\"/" ConcentricContentPlugin.cs
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.x
+          cache: true
+      - name: Execute dotnet
+        run: dotnet restore --locked-mode --force-evaluate
+      - name: Build
+        run: dotnet build --no-restore -c Release
+      - name: Install TCLI
+        run: dotnet tool install --global tcli --version 0.2.4    
+      - name: Release Thunderstore
+        run: tcli publish --token ${{ secrets.THUNDERSTORE_TOKEN }} --package-version ${{ steps.previoustag.outputs.tag }} --config-path ./Thunderstore/thunderstore.toml
+      - name: Release Github
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.previoustag.outputs.tag }}
+          artifacts: ./zip/*
+          token: ${{ secrets.GITHUB_TOKEN }}
