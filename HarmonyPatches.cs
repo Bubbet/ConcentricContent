@@ -3,6 +3,7 @@ using HarmonyLib;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using RoR2;
+using RoR2.Skills;
 using RoR2.UI;
 using UnityEngine;
 // ReSharper disable SuspiciousTypeConversion.Global
@@ -29,6 +30,96 @@ namespace ConcentricContent
 				return nameToken.IsNullOrWhiteSpace() ? s : nameToken;
 			});
 		}
+
+		#region Viewables/Saving/Loading Overrides
+
+		[HarmonyILManipulator]
+		[HarmonyPatch(typeof(Loadout), nameof(Loadout.GenerateViewables))]
+		public static void ViewableNameOverride(ILContext il)
+		{
+			var c = new ILCursor(il);
+			c.GotoNext(x => x.MatchCallOrCallvirt<GenericSkill>("get_" + nameof(GenericSkill.skillFamily)));
+			var lastIndex = c.Index;
+			c.GotoPrev(x => x.MatchLdloc(out _), x => x.MatchLdloc(out _));
+			var firstIndex = c.Index;
+			c.GotoNext(MoveType.After,
+				x => x.MatchCallOrCallvirt(typeof(SkillCatalog), nameof(SkillCatalog.GetSkillFamilyName)));
+
+			for (var i = firstIndex; i < lastIndex; i++)
+			{
+				var instr = c.Instrs[i];
+				c.Emit(instr.OpCode, instr.Operand);
+			}
+
+			c.EmitDelegate<Func<string, GenericSkill, string>>(NodeNameOverride);
+		}
+
+		private static string NodeNameOverride(string s, GenericSkill genericSkill)
+		{
+			if (!Concentric.TryGetAssetFromObject(genericSkill.skillFamily, out ISkillFamily asset)) return s;
+			var nameToken = asset.GetViewableNameOverride(genericSkill);
+			return nameToken.IsNullOrWhiteSpace() ? s : nameToken;
+		}
+
+		[HarmonyILManipulator]
+		[HarmonyPatch(typeof(Loadout.BodyLoadoutManager.BodyLoadout), nameof(Loadout.BodyLoadoutManager.BodyLoadout.ToXml))]
+		public static void ViewableNameOverrideToXml(ILContext il)
+		{
+			var c = new ILCursor(il);
+			var skillCatalog = typeof(SkillCatalog);
+			c.GotoNext(x => x.MatchCallOrCallvirt(skillCatalog, nameof(SkillCatalog.GetSkillFamily)));
+			var ptrIndex = -1;
+			var iIndex = -1;
+			c.GotoPrev(x => x.MatchLdloc(out ptrIndex),
+				x => x.MatchLdfld<Loadout.BodyLoadoutManager.BodyInfo>(nameof(Loadout.BodyLoadoutManager.BodyInfo
+					.skillFamilyIndices)), x => x.MatchLdloc(out iIndex));
+
+			c.GotoNext(MoveType.After,
+				x => x.MatchCallOrCallvirt(skillCatalog, nameof(SkillCatalog.GetSkillFamilyName)));
+			c.Emit(OpCodes.Ldloc, ptrIndex);
+			c.Emit(OpCodes.Ldfld,
+				typeof(Loadout.BodyLoadoutManager.BodyInfo).GetField(nameof(Loadout.BodyLoadoutManager.BodyInfo
+					.prefabSkillSlots)));
+			c.Emit(OpCodes.Ldloc, iIndex);
+			c.EmitDelegate<Func<string, GenericSkill[], int, string>>((s, info, i) => NodeNameOverride(s, info[i]));
+		}
+
+		[HarmonyILManipulator]
+		[HarmonyPatch(typeof(Loadout.BodyLoadoutManager.BodyLoadout), nameof(Loadout.BodyLoadoutManager.BodyLoadout.FromXml))]
+		public static void ViewableNameOverrideFromXml(ILContext il)
+		{
+			var c = new ILCursor(il);
+			c.GotoNext(x =>
+				x.MatchLdsfld(typeof(Loadout.BodyLoadoutManager), nameof(Loadout.BodyLoadoutManager.allBodyInfos)));
+			var ptrIndex = -1;
+			c.GotoNext(x => x.MatchStloc(out ptrIndex));
+
+			c.GotoNext(MoveType.After,x => x.MatchBrfalse(out _), x => x.MatchLdloc(out _), x => x.MatchLdloca(out _), x => true, x => x.MatchStloc(out _));
+			var emitPoint = c.Index - 1;
+			var familyTextIndex = -1;
+			c.GotoPrev(x => x.MatchLdloc(out familyTextIndex), x => x.MatchLdloca(out _));
+			c.Index = emitPoint;
+			c.Emit(OpCodes.Ldloc, familyTextIndex);
+			c.Emit(OpCodes.Ldloc, ptrIndex);
+			c.EmitDelegate(FromXmlNodeOverride);
+		}
+
+		private static int FromXmlNodeOverride(int i, string s, ref Loadout.BodyLoadoutManager.BodyInfo info)
+		{
+			var k = -1;
+			foreach (var skill in info.prefabSkillSlots)
+			{
+				k++;
+				var over = NodeNameOverride("", skill);
+				if (over.IsNullOrWhiteSpace()) continue;
+				if (s == over) return k;
+			}
+
+			return i;
+		}
+
+		#endregion
+
 
 		[HarmonyPostfix, HarmonyPatch(typeof(CharacterModel), nameof(CharacterModel.UpdateOverlayStates))]
 		// ReSharper disable twice InconsistentNaming
@@ -69,10 +160,12 @@ namespace ConcentricContent
 			c.EmitDelegate<Action<CharacterModel, int>>((characterModel, i) =>
 			{
 				var baseRenderer = characterModel.baseRendererInfos[i];
-				var swappedMaterial = Concentric.MaterialSwaps.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
+				var swappedMaterial = Concentric.MaterialSwaps
+					.Where(overlay => overlay.CheckEnabled(characterModel, baseRenderer))
 					.OrderBy(x => x.Priority).FirstOrDefault();
 				if (swappedMaterial == null) return;
-				characterModel.baseRendererInfos[i].renderer.material = Concentric.MaterialSwapMaterials[swappedMaterial];
+				characterModel.baseRendererInfos[i].renderer.material =
+					Concentric.MaterialSwapMaterials[swappedMaterial];
 			});
 		}
 
@@ -92,7 +185,9 @@ namespace ConcentricContent
 			c.Index--;
 			c.Emit(OpCodes.Dup);
 			c.Index++;
-			c.EmitDelegate<Func<GenericSkill, bool>>(skill => Concentric.TryGetAssetFromObject(skill.skillFamily, out ISkillFamily asset) && asset.HiddenFromCharacterSelect);
+			c.EmitDelegate<Func<GenericSkill, bool>>(skill =>
+				Concentric.TryGetAssetFromObject(skill.skillFamily, out ISkillFamily asset) &&
+				asset.HiddenFromCharacterSelect);
 			var jumpTarget = c.DefineLabel();
 			c.Emit(OpCodes.Brtrue, jumpTarget); // jump to where the index increases
 			c.Goto(brTarget!.Target); // goto end of loop

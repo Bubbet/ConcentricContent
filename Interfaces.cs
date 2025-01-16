@@ -124,6 +124,7 @@ namespace ConcentricContent
 
 		public virtual string GetNameToken(GenericSkill skill) => "";
 		public virtual bool HiddenFromCharacterSelect => false;
+		public virtual string GetViewableNameOverride(GenericSkill skill) => "";
 	}
 
 	public interface ISkill
